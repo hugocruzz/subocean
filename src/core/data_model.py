@@ -35,3 +35,18 @@ class SubOceanMetadata:
             latitude=float(data["Latitude"]),
             gas_type=bool(data["Type of gas"])
         )
+    def to_dict(self) -> dict:
+        """Convert metadata to NetCDF-compatible dict"""
+        metadata_dict = {}
+        for key, value in self.__dict__.items():
+            if isinstance(value, datetime):
+                metadata_dict[key] = value.isoformat()
+            elif isinstance(value, bool):
+                metadata_dict[key] = int(value)  # Convert bool to int (0/1)
+            elif isinstance(value, str):
+                metadata_dict[key] = str(value)  # Ensure string type
+            elif isinstance(value, (int, float)):
+                metadata_dict[key] = value  # Numeric types are compatible
+            else:
+                metadata_dict[key] = str(value)  # Convert other types to string
+        return metadata_dict

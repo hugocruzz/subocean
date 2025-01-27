@@ -1,0 +1,17 @@
+{
+    "Concentration coefficient calibration 1": "0.123",
+    "Concentration coefficient calibration 2": "27.141",
+    "Default title of the experiment": "SubOceanExperiment2024-12-11T10-47-26",
+    "Description": "Warm Up phase",
+    "End time": "2024-12-11 11:24:26",
+    "Hydrostatic Pressure coefficient 1": "400",
+    "Hydrostatic Pressure coefficient 2": "0",
+    "Latitude": "45",
+    "Oxygene parameter for meff": "21",
+    "Place": "",
+    "Salinity parameter for meff": "0",
+    "Start time": "2024-12-11 10:47:26",
+    "Temperature parameter for meff": "10",
+    "Title of the experiment": "SubOceanExperiment2024-12-11T10-47-26",
+    "Type of gas": true
+}

@@ -10,7 +10,7 @@ src_dir = os.path.join(os.path.dirname(os.path.dirname(current_dir)), 'src')
 sys.path.append(src_dir)
 
 from preprocessing.cleaner import DataCleaner
-from preprocessing.rsd_processor import RSDProcessor
+from preprocessing.derived_parameters import RSDProcessor
 from preprocessing.error_handler import ErrorHandler
 
 @pytest.fixture

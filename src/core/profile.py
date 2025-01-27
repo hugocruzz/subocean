@@ -28,3 +28,4 @@ class Profile:
                 self.metadata = SubOceanMetadata.from_dict(metadata_dict)
         
         return self.data, self.metadata
+    
