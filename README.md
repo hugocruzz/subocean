@@ -1,6 +1,6 @@
-# SubOcean Data Visualization Tool
+# Processing data for Subocean CH4/N2O profiles
 
-Interactive visualization system for SubOcean CH4/N2O profiles using GPT-4 for natural language plot generation.
+Processing data for SubOcean CH4/N2O profiles
 
 ## steps:
 - [x] Quality control of subocean (may need parameters adaptation)
@@ -10,15 +10,6 @@ Interactive visualization system for SubOcean CH4/N2O profiles using GPT-4 for n
 - [] Grid subocean and CTD data and merge into one dataset
 - [] Use CTD data for correction
 - [] Plot CTD and Subocean data
-
-## Features
-
-- Natural language plot commands
-- Interactive data visualization
-- Real-time data filtering
-- Automated data quality checks
-- State-aware plot modifications
-- Support for multiple data views
 
 ## Data Processing Pipeline
 
