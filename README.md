@@ -115,7 +115,7 @@ cp .env.example .env
 # Add your OpenAI API key to .env
 ```
 ## Project structure 
-
+```
 subocean/
 ├── src/
 │   ├── core/              # Core data processing
@@ -129,7 +129,7 @@ subocean/
 ├── └── Level3/           # Gridded products
 ├── tests/                # Unit tests
 └── examples/             # Jupyter notebooks
-
+```
 
 ## Usage
 
