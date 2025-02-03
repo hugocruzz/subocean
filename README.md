@@ -2,6 +2,15 @@
 
 Interactive visualization system for SubOcean CH4/N2O profiles using GPT-4 for natural language plot generation.
 
+## steps:
+- [x] Quality control of subocean (may need parameters adaptation)
+- [x] Derived parameters (still need some more like enrichments factors)
+- [x] Plots
+- [x] Quality control of CTD
+- [] Grid subocean and CTD data and merge into one dataset
+- [] Use CTD data for correction
+- [] Plot CTD and Subocean data
+
 ## Features
 
 - Natural language plot commands
@@ -20,45 +29,34 @@ Interactive visualization system for SubOcean CH4/N2O profiles using GPT-4 for n
 - Original column names and units
 
 #### Level 1 (Quality Controlled)
-##### L1A: Initial Processing
+##### L1A: Initial Processing (quality flags)
 - Column name standardization
 - Basic quality control flags
 - Unit conversions
 - Invalid measurement filtering
-
-##### L1B: Computed Parameters
 - Relative Standard Deviation (RSD) for gas measurements
-- Time delay corrections
-- Moving averages
-
-#### Level 2 (Derived Parameters)
-- Dissolved gas concentrations (nmol/L)
-  - CH4 dissolved with water vapor
-  - N2O dissolved with water vapor
-  - NH3 dissolved
-- Salinity corrections
-- Temperature corrections
-- Pressure corrections
+##### L1B: Computed Parameters
+- Filter the quality flags 
+#### Level 2 (Derived Parameters) 
+- Cast direction (upcast/downcast)
+- Moving averages (on H20 %)
+- Gas flow calculations:
+  - Dry gas flow
+  - water vapour
+- Corrections on gas measurements with Cell temperature
+  - CH4 dissolved with water vapor (nmol/L and ppm)
+  - H20 measured
+  - Total flow 
 
 #### Level 3 (Gridded Products)
+##### L3A: Individual Profile Grids
+- Clean column names
+- Conversion to netcdf format
+- Add metadata as global attributes
+##### L3B: Combined Profile Grids
 - Pressure-binned data (0.05 bar intervals)
 - Separate upcast/downcast profiles
 - Interpolated values
-- Profile statistics
-
-### Computed Variables
-
-| Variable | Description | Unit | Formula |
-|----------|-------------|------|---------|
-| RSD_[gas] | Relative standard deviation | % | (Error_Standard²/[gas]_measured) |
-| [gas]_dissolved | Dissolved concentration | nmol/L | [gas]_measured * f(P,T,S) |
-| Depth | Calculated depth | meters | P/ρg |
-
-### Quality Control Steps
-1. Remove invalid measurements (Error_Standard > threshold)
-2. Filter extreme values (> 3σ from mean)
-3. Apply moving average smoothing
-4. Flag suspicious data points
 
 ## Column Descriptions
 
@@ -99,6 +97,18 @@ or percentage water saturation. The percentage of saturation measured by the CTD
 34. **Laser Flux**: Laser flux, typically constant.
 35. **Norm Signal**: Not clearly defined.
 36. **Value Max**: Not clearly defined.
+
+## Plots
+- **Measurement plots**: Gas concentrations and derived parameters vs depth
+- **Diagnostic plots**: Instrument parameters and quality indicators
+
+## Metadata
+Metadata is preserved throughout processing:
+- Original metadata from .log files
+- Expedition information
+- Cast details
+- Processing history
+
 ## Installation
 
 ```bash
@@ -123,6 +133,9 @@ subocean/
 │   └── gpt_interface/    # GPT integration
 ├── data/
 │   └── Level0/           # Raw instrument data
+├── └── Level1/           # Quality controlled data
+├── └── Level2/           # Derived parameters
+├── └── Level3/           # Gridded products
 ├── tests/                # Unit tests
 └── examples/             # Jupyter notebooks
 
@@ -149,9 +162,6 @@ code = prompt_handler.generate_plot_code(command)
 
 ## Next Steps
 ### Pre-processing:
-- Add log coordinates to data and make it possible to plot log coordinates (by creating a netcdf/xarray ?)
-- Load bathymetry ?
-
 
 ### GPT
 - Column recognition for better robustness (CTD profiles etc)
@@ -166,11 +176,7 @@ You want to create a script that will take as input a question like : "Give me
 
 TODO:
  Plot chaque profiles: 
-    - Check chaque profiles si up and down pareil 
-    - Couleurs differentes up et down 
     •	Allow to compare the resulting SubOcean concentration profiles using constant values for T, S and O2, with those obtained from the CTD data, in order to evaluate their effect.
-Questions for Jerome/A2PS:
-   - equation of the time delay
 
 ## Notes:
 m_eff=(1.9774+(0.0385-0.00316*Salinity(psu))*(WaterTemperature(°C)-2.67))*(1+0.2286*(O2diss(%)-0.2)/(0-0.2))
@@ -178,4 +184,4 @@ m_eff=(1.9774+(0.0385-0.00316*Salinity(psu))*(WaterTemperature(°C)-2.67))*(1+0.
 ## Fieldwork
 - Turn on the spectrometer 1h before the first measurement (during transportation) to reach 40°C for the box temperature
 - IF deployed vertically, the signal might appear noisy on the first meters. Need to be tested in the lab.
-- Check the fit to know if need to recover signal 
+- Check the fit to know if need to recover signal
