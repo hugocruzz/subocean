@@ -3,21 +3,14 @@ import numpy as np
 from typing import Optional, Dict, List, Tuple
 from pathlib import Path
 import json
+
 class DataCleaner:
-    def __init__(self, df: pd.DataFrame, DEFAULT_VALIDATION_RANGES: Dict[str, Tuple[float, float]]):
-        self.df = df.copy()
+    def __init__(self, df, validation_ranges=None):
+        self.df = df
+        self.DEFAULT_VALIDATION_RANGES = validation_ranges
         self.cleaning_log = []
-        self.config_path = Path(__file__).parent.parent / "config" / "column_mappings.json"
-        self.DEFAULT_VALIDATION_RANGES = DEFAULT_VALIDATION_RANGES
-    def standardize_columns(self):
-        """Standardize column names based on mapping config"""
-        with open(self.config_path) as f:
-            mappings = json.load(f)["column_standardization"]
-            
-        self.df = self.df.rename(columns=mappings)
-        return self.df
-    
-    def ensure_numeric_columns(self, columns: List[str]) -> pd.DataFrame:
+
+    def ensure_numeric_columns(self, columns):
         """Convert columns to numeric type and handle errors"""
         for col in columns:
             if col in self.df.columns:
@@ -27,14 +20,31 @@ class DataCleaner:
                 except Exception as e:
                     self.cleaning_log.append(f"Error converting {col}: {str(e)}")
         return self.df
-    
-    def validate_measurements(self, 
-                            validation_ranges: Optional[Dict[str, Tuple[float, float]]] = None
-                            ) -> pd.DataFrame:
+
+    def apply_validation_rules(self, validation_rules):
+        """
+        Apply combined filtering based on absolute ranges and RSD thresholds.
+        
+        Args:
+            validation_rules (dict): Dictionary containing range and RSD thresholds for each gas
+        Returns:
+            pd.DataFrame: DataFrame with added flag columns
+        """
+        for gas, rules in validation_rules.items():
+            if gas in self.df.columns:
+                # Create masks for both conditions
+                valid_range = (self.df[gas] >= rules['range'][0]) & (self.df[gas] <= rules['range'][1])
+                valid_rsd = abs(self.df[f"{gas}_RSD"]) <= rules['rsd_threshold']
+                
+                # Combine masks and create flag column (1 = invalid, 0 = valid)
+                self.df[f"{gas}_FLAG"] = (~(valid_range & valid_rsd)).astype(int)
+        
+        return self.df
+
+    def validate_measurements(self, validation_ranges=None):
         """Flag measurements outside validation ranges"""
         conditions = validation_ranges or self.DEFAULT_VALIDATION_RANGES
         
-        #self.standardize_columns()  # Add standardization step
         # Convert all columns to numeric first
         numeric_columns = list(conditions.keys())
         self.ensure_numeric_columns(numeric_columns)
@@ -47,39 +57,18 @@ class DataCleaner:
                     f"Flagged {column} outside [{min_val}, {max_val}]"
                 )
         return self.df
-        
-    def calculate_rsd(self, gas_columns: List[str], 
-                    error_column: str = 'Error Standard',
-                    threshold: float = 0.001) -> pd.DataFrame:
+
+    def calculate_rsd(self, gas_columns):
         """Calculate RSD and flag gas measurements while preserving existing flags"""
         for column in gas_columns:
             if column in self.df.columns:
                 # Calculate RSD
-                rsd = (self.df[error_column]**2) / self.df[column]
+                rsd = (self.df['Error Standard']**2) / self.df[column]
                 self.df[f"{column}_RSD"] = rsd
-                
-                # Get existing flag or initialize with zeros if it doesn't exist
-                flag_column = f"{column}_FLAG"
-                if flag_column not in self.df.columns:
-                    self.df[flag_column] = 0
-                    
-                # Update flag - set to 1 if either existing flag is 1 OR rsd exceeds threshold
-                self.df[flag_column] = ((self.df[flag_column] == 1) | (rsd > threshold)).astype(int)
-                self.cleaning_log.append(f"Updated RSD and flags for {column}")
+                self.cleaning_log.append(f"Updated RSD for {column}")
         return self.df
 
-    def ensure_numeric_columns(self, columns: List[str]) -> pd.DataFrame:
-        """Convert columns to numeric type and handle errors"""
-        for col in columns:
-            if col in self.df.columns:
-                try:
-                    self.df[col] = pd.to_numeric(self.df[col], errors='coerce')
-                    self.cleaning_log.append(f"Converted {col} to numeric")
-                except Exception as e:
-                    self.cleaning_log.append(f"Error converting {col}: {str(e)}")
-        return self.df
-
-    def filter_flagged_row(self) -> pd.DataFrame:
+    def filter_flagged_row(self):
         """Create filtered DataFrame by setting flagged values to NaN"""
         df_filtered = self.df.copy()
         
@@ -94,7 +83,7 @@ class DataCleaner:
         self.df = df_filtered
         return self.df 
 
-    def filter_flagged_rows(self, columns_to_check: List[str]) -> pd.DataFrame:
+    def filter_flagged_rows(self, columns_to_check):
         """Create filtered DataFrame by setting rows to NaN based on specified column flags
         
         Args:
@@ -115,11 +104,49 @@ class DataCleaner:
         # Set all columns to NaN where mask is True
         df_filtered.loc[mask, :] = np.nan
         self.df = df_filtered
-        return df_filtered
-    
+        return self.df
+
     def process_all(self, gas_columns: List[str], output_path: Path) -> None:
         """Run complete cleaning pipeline"""
         # L1A: Basic validation and RSD flags
         self.validate_measurements()
         self.calculate_rsd(gas_columns)
         print("\n".join(self.cleaning_log))
+
+    def validate_data(self, validation_config: Dict) -> pd.DataFrame:
+        """
+        Unified validation system for all measurements
+        
+        Args:
+            validation_config: {
+                'standard_ranges': {
+                    'column': (min, max)
+                },
+                'gas_rules': {
+                    'gas_name': {
+                        'range': (min, max),
+                        'rsd_threshold': float
+                    }
+                }
+            }
+        """
+        """Flag measurements outside validation ranges"""
+        conditions = validation_config['standard_ranges'] or self.DEFAULT_VALIDATION_RANGES
+        
+        # Convert all columns to numeric first
+        numeric_columns = list(conditions.keys())
+        self.ensure_numeric_columns(numeric_columns)
+        # First validate standard measurements
+        for column, (min_val, max_val) in validation_config['standard_ranges'].items():
+            if column in self.df.columns:
+                mask = (self.df[column] >= min_val) & (self.df[column] <= max_val)
+                self.df[f"{column}_FLAG"] = (~mask | self.df[column].isna()).astype(int)
+                
+        # Then handle gas measurements with RSD
+        for gas, rules in validation_config['gas_rules'].items():
+            if gas in self.df.columns:
+                valid_range = (self.df[gas] >= rules['range'][0]) & (self.df[gas] <= rules['range'][1])
+                valid_rsd = abs(self.df[f"{gas}_RSD"]) <= rules['rsd_threshold']
+                self.df[f"{gas}_FLAG"] = (~(valid_range & valid_rsd)).astype(int)
+                
+        return self.df

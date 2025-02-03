@@ -80,7 +80,7 @@ class InteractiveProfilePlotter:
         # Add process button
         process_button = pn.widgets.Button(name='Process', button_type='primary')
 
-        plot_pane = pn.pane.Plotly(sizing_mode='stretch_width', height=800)
+        plot_pane = pn.pane.Plotly(sizing_mode='stretch_width', height=1600)  # Doubled height
 
         def update_plot_on_click(event):
             plot_pane.object = update_plot(
@@ -99,92 +99,76 @@ class InteractiveProfilePlotter:
             self.current_max = max_v
             self.current_yaxis = yvar
             
+            # Calculate grid dimensions
+            n_profiles = len(self.profiles)
+            n_cols = 3  # Changed to 3 columns
+            n_rows = (n_profiles + n_cols - 1) // n_cols
+            
+            # Create figure with grid layout
             fig = make_subplots(
-                rows=len(self.profiles), cols=1,
+                rows=n_rows,
+                cols=n_cols,
                 shared_xaxes=True,
-                subplot_titles=[df['profile'].iloc[0] for df in self.profiles],
-                vertical_spacing=0.1  # Decreased spacing
+                shared_yaxes=True,
+                subplot_titles=[df['profile'].iloc[0] for df in self.profiles] + [''] * (n_rows * n_cols - n_profiles),
+                vertical_spacing=0.15,
+                horizontal_spacing=0.1
             )
-    
+            
+            # Set figure dimensions and layout
+            fig.update_layout(
+                height=800 * n_rows,  # Doubled height per row
+                width=1200,
+                showlegend=True,
+                template="simple_white",
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)',
+                margin=dict(t=50, b=50, l=50, r=50)
+            )
             
             for i, profile_df in enumerate(self.profiles):
-
+                row_idx = (i // n_cols) + 1
+                col_idx = (i % n_cols) + 1
                 
-                cleaner = DataCleaner(profile_df,DEFAULT_VALIDATION_RANGES)
-                
-                # Apply validation range
+                cleaner = DataCleaner(profile_df, DEFAULT_VALIDATION_RANGES)
                 ranges = {var: (min_v, max_v)}
                 df_cleaned = cleaner.validate_measurements(ranges)
-                
-                # Apply RSD cleaning
                 df_cleaned = cleaner.calculate_rsd([var], threshold=rsd_thresh)
                 
-                # Plot original downcast data
-                mask_down = profile_df['is_downcast']
+                # Determine if upcast or downcast
+                is_downcast = 'down' in profile_df['profile'].iloc[0].lower()
+                profile_color = '#1f77b4' if is_downcast else '#ff7f0e'  # Blue for downcast, Orange for upcast
+                
+                # Add raw data trace with lines
                 fig.add_trace(
                     go.Scatter(
-                        x=profile_df[var][mask_down],
-                        y=profile_df[yvar][mask_down],
-                        name="Original down",
-                        line=dict(color='lightgray'),
-                        showlegend=True
+                        x=profile_df[var],
+                        y=profile_df[yvar],
+                        mode='lines+markers',
+                        name=f'{profile_df["profile"].iloc[0]} (raw)',
+                        marker=dict(size=4, color='#cccccc'),
+                        line=dict(width=1, color='#cccccc')
                     ),
-                    row=i+1, col=1
-                )
-
-                # Plot original upcast data
-                mask_up = ~profile_df['is_downcast']
-                fig.add_trace(
-                    go.Scatter(
-                        x=profile_df[var][mask_up],
-                        y=profile_df[yvar][mask_up],
-                        name="Original up",
-                        line=dict(color='lightcoral'),
-                        showlegend=True
-                    ),
-                    row=i+1, col=1
+                    row=row_idx,
+                    col=col_idx
                 )
                 
-                # Plot cleaned data - downcast
-                mask_valid = ~df_cleaned[f"{var}_FLAG"].astype(bool)
+                # Add cleaned data trace with lines
                 fig.add_trace(
                     go.Scatter(
-                        x=df_cleaned[var][mask_valid & mask_down],
-                        y=df_cleaned[yvar][mask_valid & mask_down],
-                        name="Cleaned down",
-                        line=dict(color=self.colors['down']),
-                        showlegend=True
+                        x=df_cleaned[var],
+                        y=df_cleaned[yvar],
+                        mode='lines+markers',
+                        name=f'{profile_df["profile"].iloc[0]} (cleaned)',
+                        marker=dict(size=4, color=profile_color),
+                        line=dict(width=1, color=profile_color)
                     ),
-                    row=i+1, col=1
+                    row=row_idx,
+                    col=col_idx
                 )
-
-                # Plot cleaned data - upcast
-                fig.add_trace(
-                    go.Scatter(
-                        x=df_cleaned[var][mask_valid & mask_up],
-                        y=df_cleaned[yvar][mask_valid & mask_up],
-                        name="Cleaned up",
-                        line=dict(color=self.colors['up']),
-                        showlegend=True
-                    ),
-                    row=i+1, col=1
-                )
-
-                # Update axes and legend position for this subplot
-                fig.update_xaxes(title_text=var, row=i+1, col=1)
-                fig.update_yaxes(title_text=yvar, autorange="reversed", row=i+1, col=1)
-            # Update overall layout
-            fig.update_layout(
-                height=400*len(self.profiles),  # Increased height per subplot
-                width=1000,
-                showlegend=True,
-                legend=dict(
-                    xanchor="left",
-                    x=1.05,
-                    yanchor="top",
-                    y=0.99
-                )
-            )
+                
+                # Update yaxis to be inverted for each subplot
+                fig.update_yaxes(autorange="reversed", row=row_idx, col=col_idx)
             
             return fig
 
@@ -197,26 +181,33 @@ class InteractiveProfilePlotter:
             rsd_threshold.value
         )
 
-        # Layout with controls in a row
+        # Control panel widgets
         controls = pn.Column(
+            pn.pane.Markdown("## Data Cleaning Controls"),
+            var_select,
             yaxis_select,
-            var_select, 
-            min_val, 
-            max_val, 
+            min_val,
+            max_val,
             rsd_threshold,
             process_button,
-            name='Controls'
+            width=300,
+            styles={'background': 'white'},  # Use styles dict instead of background
+            margin=(10, 25, 10, 25)  # top, right, bottom, left
         )
         
-        return pn.Column(
+        # Layout with controls on left, plot on right
+        layout = pn.Row(
             controls,
             plot_pane,
             sizing_mode='stretch_width'
         )
+        
+        return layout
 
 if __name__ == "__main__":
     base_dir = Path.cwd()
-    l2_dir = base_dir / "data" / "Level2"
+    expedition = "sanna"
+    l2_dir = base_dir / "data" / "sanna" / "Level2"
     
     plotter = InteractiveProfilePlotter(l2_dir)
     dashboard = plotter.create_interactive_cleaning_plot()

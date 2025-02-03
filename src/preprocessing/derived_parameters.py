@@ -3,11 +3,10 @@ import numpy as np
 from typing import List, Dict, Optional
 
 class DerivedParameters:
-    def __init__(self, df: pd.DataFrame, gas_columns: List[str]):
+    def __init__(self, df: pd.DataFrame):
         self.df = df.copy()
         self.calculation_log = []
         self.pressure_column = 'Hydrostatic pressure (bar)'
-        self.gas_columns = gas_columns
 
     def add_cast_direction(self) -> pd.DataFrame:
         """Add basic cast direction based on pressure gradient"""
