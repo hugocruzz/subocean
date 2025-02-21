@@ -35,15 +35,19 @@ VALIDATION_CONFIG = {
         },
         '[CH4] dissolved with water vapour (nmol/L)': {
             'range': (0, 100),
-            'rsd_threshold': 0.01
+            'rsd_threshold': 1
         },
         '[N2O] dissolved with water vapour (ppm)': {
             'range': (0, 100),
-            'rsd_threshold': 0.01
+            'rsd_threshold': 1
         },
         '[N2O] dissolved with water vapour (nmol/L)': {
             'range': (0, 100),
-            'rsd_threshold': 0.01
+            'rsd_threshold': 1
+        },
+        '[CH4] measured (ppm)': {
+            'range': (0, 100),
+            'rsd_threshold': 1
         },
     }
 }
@@ -87,8 +91,14 @@ def clean_column_names(df):
     # Replace brackets, spaces and special chars with underscore
     clean_cols = {}
     for col in df.columns:
+        # Replace special chars with underscore
         clean = re.sub(r'[\[\]\(\)\s\\/]+', '_', col)
+        # Remove non-alphanumeric chars except underscore
         clean = re.sub(r'[^a-zA-Z0-9_]+', '', clean)
+        # Replace multiple underscores with single underscore
+        clean = re.sub(r'_+', '_', clean)
+        # Remove leading/trailing underscores
+        clean = clean.strip('_')
         # Ensure doesn't start with number
         if clean[0].isdigit():
             clean = 'var_' + clean
@@ -317,4 +327,4 @@ def main(expedition_name: str):
             dataset.to_netcdf(output_path)
             print(f"Saved L3B dataset for {gas_type} to {output_path}")'''
 if __name__ == "__main__":
-    main(expedition_name="lexplore")
+    main(expedition_name="forel")

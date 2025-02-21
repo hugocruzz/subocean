@@ -7,7 +7,7 @@ Processing data for SubOcean CH4/N2O profiles
 - [x] Derived parameters (still need some more like enrichments factors)
 - [x] Plots
 - [x] Quality control of CTD
-- [] Grid subocean and CTD data and merge into one dataset
+- [x] Grid subocean and CTD data and merge into one dataset
 - [] Use CTD data for correction
 - [] Plot CTD and Subocean data
 

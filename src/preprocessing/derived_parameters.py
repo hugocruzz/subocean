@@ -77,6 +77,7 @@ class DerivedParameters:
     
     def apply_moving_average(self, column: str, window: int = 5) -> pd.DataFrame:
         """Apply moving average to specific column"""
+        self.df[f"{column}_no_moving_average"] = self.df[column]
         self.df[f"{column}"] = self.df[column].rolling(
             window=window, center=True).mean()
         self.calculation_log.append(f"Applied {window}-point moving average to {column}")
@@ -98,7 +99,7 @@ class DerivedParameters:
                 self.df['Total Flow (sccm)'] * self.df['[H2O] measured (%)'] / 100
             )
             
-            self.df['water vapour'] = (
+            self.df['Water_vapour flow [sccm]'] = (
                 self.df['Total Flow (sccm)'] * 
                 self.df['[H2O] measured (%)'] / 100
             )
@@ -128,9 +129,8 @@ class DerivedParameters:
         # H2O correction
         h2o_cols = ['[H2O] measured (%)', 'Cellule Temperature (Degree Celsius)']
         if self.has_required_columns(h2o_cols):
-            self.df['H20 measured'] = self.df['[H2O] measured (%)']/100
             self.df['[H2O] measured corrected Tcell'] = (
-                self.df['H20 measured'] /
+                 self.df['[H2O] measured (%)']/100 /
                 (2.469*(self.df['Cellule Temperature (Degree Celsius)']-40)/100+1)
             )
             self.calculation_log.append("Applied H2O temperature correction")
@@ -148,8 +148,9 @@ class DerivedParameters:
         self.clean_cast_direction(pressure_threshold=0.03)
         
         # Rest of processing
-        self.apply_moving_average('[H2O] measured (%)', 5)
+        self.apply_moving_average('[H2O] measured (%)', 10)
         self.calculate_flows()
-        self.calculate_gas_corrections()
+        #Comment gas_correction because need to check with emeline if already corrected. 
+        #self.calculate_gas_corrections()
         return self.df
 

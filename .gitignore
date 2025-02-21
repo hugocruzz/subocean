@@ -1,4 +1,8 @@
 .env
-data/forel/*
+
+data/forel/Level0/N2O/*
+data/forel/Level1/*
+data/forel/Level2/*
+data/forel/Level3/*
 data/sanna/*
 figures/sanna/*
